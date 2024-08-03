@@ -40,4 +40,4 @@ spec:
             timeoutSeconds: 1
             failureThreshold: 6
       imagePullSecrets:
-        - name: docker-config-secret
+        - name: {{ .Release.Name }}-docker-config-secret

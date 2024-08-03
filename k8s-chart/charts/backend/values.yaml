@@ -1,13 +1,7 @@
-imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
 replicas: 1
-strategy:
-  type: RollingUpdate
-  rollingUpdate:
-    maxUnavailable: 1
-    maxSurge: 20%
 
 containers:
   imageRegistry: gitlab.praktikum-services.ru:5050/std-027-58/momo-store/

@@ -9,5 +9,4 @@ spec:
     - port: {{.Values.service.port}}
       targetPort: {{.Values.service.port}}
       protocol: TCP
-      name: {{.Values.service.port}}
   selector: {{- include "backend.selectorLabels" . | nindent 4}}
