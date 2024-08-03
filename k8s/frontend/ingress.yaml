@@ -1,0 +1,28 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend
+spec:
+  ingressClassName: "nginx"
+  tls:
+    - hosts:
+        - "w.nuf1.fun"
+  rules:
+    - host: "w.nuf1.fun"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8081
