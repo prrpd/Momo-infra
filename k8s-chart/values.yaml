@@ -4,18 +4,3 @@ global:
   secrets:
     kubeDockerRegistry: ${KUBE_DOCKER_REGISTRY}
   port: 8081
-
-backend:
-
-frontend:
-  name: frontend
-  revisionHistoryLimit: 12
-  replicas: 1
-  containers:
-    image:
-      name: momo-frontend
-      tag: 1.0.1337950
-    resources:
-      requests:
-        cpu: 1
-  fqdn: std-027-58.k8s.praktikum-services.tech
