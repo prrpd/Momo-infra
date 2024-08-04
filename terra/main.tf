@@ -48,7 +48,7 @@ resource "yandex_dns_recordset" "rs1" {
   name    = "w.nuf1.fun."
   type    = "A"
   ttl     = 200
-  data    = ["51.250.33.45"]
+  data    = ["51.250.45.134"]
 }
 
 resource "yandex_kms_symmetric_key" "kms-key" {
@@ -201,6 +201,21 @@ resource "helm_release" "nginx_ingress" {
   #   value = "ClusterIP"
   # }
 }
+resource "helm_release" "argo_cd" {
+  name       = "argo-cd"
+  atomic     = true
+  repository = "https://argoproj.github.io/argo-helm"
+  chart      = "argo-cd"
+  version    = "7.3.11"
+
+  # Optionally, you can set additional values
+  # values = [
+  #   # Inline YAML values
+  #   "key: value"
+  # ]
+}
+
+
 # resource "helm_release" "nginx_ingress" {
 #   name       = "nginx-ingress-controller"
 #   atomic     = true
