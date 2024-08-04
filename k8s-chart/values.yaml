@@ -2,5 +2,5 @@ global:
   appName: momo-store
   imageRegistry: gitlab.praktikum-services.ru:5050/std-027-58/momo-store/
   secrets:
-    kubeDockerRegistry: ${KUBE_DOCKER_REGISTRY}
+    kubeDockerRegistry: ""
   port: 8081

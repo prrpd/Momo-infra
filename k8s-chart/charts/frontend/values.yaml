@@ -43,6 +43,7 @@ readinessProbe:
     port: 80
 
 ingress:
+  enabled: true
   className: "nginx"
   fqdn: ""
 
