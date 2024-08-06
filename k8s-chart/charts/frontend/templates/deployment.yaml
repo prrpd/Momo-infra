@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "frontend.labels" . | nindent 4 }}
 spec:
-  revisionHistoryLimit: 12
+  revisionHistoryLimit: 11
   strategy:
     type: RollingUpdate
     rollingUpdate:

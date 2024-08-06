@@ -202,11 +202,14 @@ resource "helm_release" "nginx_ingress" {
   # }
 }
 resource "helm_release" "argo_cd" {
-  name       = "argo-cd"
-  atomic     = true
-  repository = "https://argoproj.github.io/argo-helm"
-  chart      = "argo-cd"
-  version    = "7.3.11"
+  name             = "argo-cd"
+  namespace        = "argo-cd"
+  create_namespace = true
+  atomic           = true
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-cd"
+  version          = "7.3.11"
+  depends_on       = [yandex_kubernetes_cluster.k8s-zonal]
 
   # Optionally, you can set additional values
   # values = [
@@ -214,8 +217,66 @@ resource "helm_release" "argo_cd" {
   #   "key: value"
   # ]
 }
+data "yandex_alb_load_balancer" "tf-alb-data" {
+  load_balancer_id = "enpemkmcn8ed083phd27k8s-264848606026dfa564f774bb8894e1d36faf0b13"
+}
 
+resource "yandex_iam_service_account_key" "sa-auth-key" {
+  service_account_id = var.service_account_id
+  description        = "external dns terra key"
+  key_algorithm      = "RSA_2048"
+}
+# resource "local_file" "auth_key_file" {
+#   content  = yandex_iam_service_account_key.sa-auth-key.private_key
+#   filename = "${path.module}/sa-auth-key.json"
+# }
 
+# resource "local_file" "auth_json_file" {
+#   content = "${jsonencode({
+#     id                 = yandex_iam_service_account_key.sa-auth-key.id
+#     service_account_id = yandex_iam_service_account_key.sa-auth-key.service_account_id
+#     created_at         = yandex_iam_service_account_key.sa-auth-key.created_at
+#     key_algorithm      = yandex_iam_service_account_key.sa-auth-key.key_algorithm
+#     public_key         = yandex_iam_service_account_key.sa-auth-key.public_key
+#     private_key        = yandex_iam_service_account_key.sa-auth-key.private_key
+#   })}\n"
+#   filename = "${path.module}/auth.json"
+# }
+# data "local_file" "auth_json_file" {
+#   filename = local_file.auth_json_file.filename
+# }
+# locals {
+#   auth_json = "${jsonencode({
+#     id                 = yandex_iam_service_account_key.sa-auth-key.id
+#     service_account_id = yandex_iam_service_account_key.sa-auth-key.service_account_id
+#     created_at         = yandex_iam_service_account_key.sa-auth-key.created_at
+#     key_algorithm      = yandex_iam_service_account_key.sa-auth-key.key_algorithm
+#     public_key         = yandex_iam_service_account_key.sa-auth-key.public_key
+#     private_key        = yandex_iam_service_account_key.sa-auth-key.private_key
+#   })}\n"
+# }
+
+resource "helm_release" "externaldns" {
+  name             = "externaldns"
+  namespace        = "externaldns"
+  create_namespace = true
+  atomic           = true
+  repository       = "oci://cr.yandex/yc-marketplace/yandex-cloud/externaldns/chart"
+  chart            = "externaldns"
+  version          = "0.5.1"
+  depends_on = [
+    yandex_kubernetes_cluster.k8s-zonal
+  ]
+
+  set {
+    name  = "config.folder_id"
+    value = var.folder_id
+  }
+  set_sensitive {
+    name  = "config.auth.json"
+    value = file("./auth.json")
+  }
+}
 # resource "helm_release" "nginx_ingress" {
 #   name       = "nginx-ingress-controller"
 #   atomic     = true
