@@ -25,6 +25,10 @@ data:
         proxy_pass http://{{ .Release.Name }}-backend-svc:8081;
       }
 
+      location /metrics {
+        stub_status;
+    }
+
       # redirect server error pages to the static page /50x.html
       #
       error_page   500 502 503 504  /50x.html;
