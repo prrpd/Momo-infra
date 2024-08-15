@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "frontend.selectorLabels" . | nindent 6 }}
+        {{- include "frontend.labels" . | nindent 8 }}
     spec:
       imagePullSecrets:
         - name: {{ .Release.Name }}-docker-config-secret
