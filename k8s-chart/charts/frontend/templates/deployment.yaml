@@ -11,7 +11,9 @@ spec:
     rollingUpdate:
       maxUnavailable: 1
       maxSurge: 20%
-  replicas: {{ .Values.replicas }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicas | default 1 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "frontend.selectorLabels" . | nindent 6 }}
