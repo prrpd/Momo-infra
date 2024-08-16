@@ -48,7 +48,7 @@ resource "yandex_dns_recordset" "rs1" {
   name    = "w.nuf1.fun."
   type    = "A"
   ttl     = 200
-  data    = ["51.250.45.134"]
+  data    = ["51.250.32.27"]
 }
 
 resource "yandex_kms_symmetric_key" "kms-key" {
@@ -194,12 +194,14 @@ resource "helm_release" "nginx_ingress" {
   atomic     = true
   repository = "https://kubernetes.github.io/ingress-nginx"
   chart      = "ingress-nginx"
-  depends_on = [yandex_kubernetes_cluster.k8s-zonal]
-
-  # set {
-  #   name  = "service.type"
-  #   value = "ClusterIP"
-  # }
+  depends_on = [
+    yandex_kubernetes_cluster.k8s-zonal,
+    yandex_kubernetes_node_group.k8s-diplom-ng
+  ]
+  set {
+    name  = "controller.metrics.enabled"
+    value = true
+  }
 }
 resource "helm_release" "argo_cd" {
   name             = "argo-cd"
@@ -209,23 +211,20 @@ resource "helm_release" "argo_cd" {
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"
   version          = "7.3.11"
-  depends_on       = [yandex_kubernetes_cluster.k8s-zonal]
+  depends_on = [
+    yandex_kubernetes_cluster.k8s-zonal,
+    yandex_kubernetes_node_group.k8s-diplom-ng
+  ]
+}
+# data "yandex_alb_load_balancer" "tf-alb-data" {
+#   load_balancer_id = "enpemkmcn8ed083phd27k8s-264848606026dfa564f774bb8894e1d36faf0b13"
+# }
 
-  # Optionally, you can set additional values
-  # values = [
-  #   # Inline YAML values
-  #   "key: value"
-  # ]
-}
-data "yandex_alb_load_balancer" "tf-alb-data" {
-  load_balancer_id = "enpemkmcn8ed083phd27k8s-264848606026dfa564f774bb8894e1d36faf0b13"
-}
-
-resource "yandex_iam_service_account_key" "sa-auth-key" {
-  service_account_id = var.service_account_id
-  description        = "external dns terra key"
-  key_algorithm      = "RSA_2048"
-}
+# resource "yandex_iam_service_account_key" "sa-auth-key" {
+#   service_account_id = var.service_account_id
+#   description        = "external dns terra key"
+#   key_algorithm      = "RSA_2048"
+# }
 # resource "local_file" "auth_key_file" {
 #   content  = yandex_iam_service_account_key.sa-auth-key.private_key
 #   filename = "${path.module}/sa-auth-key.json"
@@ -256,32 +255,97 @@ resource "yandex_iam_service_account_key" "sa-auth-key" {
 #   })}\n"
 # }
 
-resource "helm_release" "externaldns" {
-  name             = "externaldns"
-  namespace        = "externaldns"
+# resource "helm_release" "externaldns" {
+#   name             = "externaldns"
+#   namespace        = "externaldns"
+#   create_namespace = true
+#   atomic           = true
+#   repository       = "oci://cr.yandex/yc-marketplace/yandex-cloud/externaldns/chart"
+#   chart            = "externaldns"
+#   version          = "0.5.1"
+#   depends_on = [
+#     yandex_kubernetes_cluster.k8s-zonal
+#   ]
+#   set {
+#     name  = "config.folder_id"
+#     value = var.folder_id
+#   }
+#   set_sensitive {
+#     name  = "config.auth.json"
+#     value = provisioner.local-exec
+#   }
+#   provisioner "local-exec" {
+#     command = "yc iam key create --service-account-name ${var.service_account_id} --format json --output key.json"
+#   }
+# }
+resource "helm_release" "prometheus-stack" {
+  name             = "prometheus"
+  namespace        = "monitoring-stack"
   create_namespace = true
   atomic           = true
-  repository       = "oci://cr.yandex/yc-marketplace/yandex-cloud/externaldns/chart"
-  chart            = "externaldns"
-  version          = "0.5.1"
+  repository       = "https://prometheus-community.github.io/helm-charts"
+  chart            = "kube-prometheus-stack"
+  version          = "61.7.1"
   depends_on = [
-    yandex_kubernetes_cluster.k8s-zonal
+    yandex_kubernetes_cluster.k8s-zonal,
+    yandex_kubernetes_node_group.k8s-diplom-ng
   ]
-
-  set {
-    name  = "config.folder_id"
-    value = var.folder_id
-  }
-  set_sensitive {
-    name  = "config.auth.json"
-    value = file("./auth.json")
-  }
 }
-# resource "helm_release" "nginx_ingress" {
-#   name       = "nginx-ingress-controller"
-#   atomic     = true
-#   repository = "https://kubernetes.github.io/ingress-nginx"
-#   chart      = "ingress-nginx"
+
+# resource "kubernetes_manifest" "momostore_prometheus_servicemonitor" {
+#   manifest = {
+#     apiVersion = "monitoring.coreos.com/v1"
+#     kind       = "ServiceMonitor"
+#     metadata = {
+#       name      = "momostore-${helm_release.prometheus-stack.chart}-servicemonitor"
+#       namespace = helm_release.prometheus-stack.namespace
+#       labels = {
+#         release = helm_release.prometheus-stack.name
+#       }
+#     }
+#     spec = {
+#       endpoints = [
+#         {
+#           port     = "backend"
+#           path     = "/metrics"
+#           interval = "5s"
+#         }
+#       ]
+#       namespaceSelector = {
+#         any = true
+#       }
+#       selector = {
+#         matchLabels = {
+#           "app.kubernetes.io/instance" = "momo"
+#           "app.kubernetes.io/name"     = "backend"
+#         }
+#       }
+#     }
+#   }
+#   depends_on = [
+#     helm_release.prometheus-stack,
+#     yandex_kubernetes_cluster.k8s-zonal
+#   ]
+# }
+
+# resource "helm_release" "prometheus" {
+#   name             = "prometheus"
+#   namespace        = "monitoring"
+#   create_namespace = true
+#   atomic           = true
+#   repository       = "https://prometheus-community.github.io/helm-charts"
+#   chart            = "prometheus"
+#   version          = "25.25.0"
+# }
+# resource "helm_release" "grafana" {
+#   name             = "grafana"
+#   namespace        = "monitoring"
+#   create_namespace = true
+#   atomic           = true
+#   repository       = "https://grafana.github.io/helm-charts"
+#   chart            = "grafana"
+#   version          = "8.4.1"
+
 # }
 resource "yandex_iam_service_account_static_access_key" "sa-static-key" {
   service_account_id = var.service_account_id
