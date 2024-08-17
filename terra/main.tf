@@ -20,7 +20,6 @@ resource "yandex_kubernetes_cluster" "k8s-zonal" {
   }
 }
 
-
 resource "yandex_vpc_network" "terra-net" {
   name = "terra-net"
 }
@@ -28,7 +27,7 @@ resource "yandex_vpc_network" "terra-net" {
 resource "yandex_vpc_subnet" "terra-subnet" {
   name           = "terra-subnet"
   v4_cidr_blocks = ["10.1.0.0/16"]
-  zone           = "ru-central1-a"
+  zone           = var.zone
   network_id     = yandex_vpc_network.terra-net.id
 }
 
@@ -43,12 +42,19 @@ resource "yandex_dns_zone" "nuf1-fun" {
   deletion_protection = false
 }
 
+resource "yandex_vpc_address" "addr" {
+  name = "LB-ip"
+  external_ipv4_address {
+    zone_id = var.zone
+  }
+}
+
 resource "yandex_dns_recordset" "rs1" {
   zone_id = yandex_dns_zone.nuf1-fun.id
   name    = "w.nuf1.fun."
   type    = "A"
-  ttl     = 200
-  data    = ["51.250.32.27"]
+  ttl     = 30
+  data    = [yandex_vpc_address.addr.external_ipv4_address[0].address]
 }
 
 resource "yandex_kms_symmetric_key" "kms-key" {
@@ -196,13 +202,18 @@ resource "helm_release" "nginx_ingress" {
   chart      = "ingress-nginx"
   depends_on = [
     yandex_kubernetes_cluster.k8s-zonal,
-    yandex_kubernetes_node_group.k8s-diplom-ng
+    yandex_kubernetes_node_group.k8s-diplom-ng,
   ]
   set {
     name  = "controller.metrics.enabled"
     value = true
   }
+  set {
+    name  = "controller.service.loadBalancerIP"
+    value = yandex_vpc_address.addr.external_ipv4_address[0].address
+  }
 }
+
 resource "helm_release" "argo_cd" {
   name             = "argo-cd"
   namespace        = "argo-cd"
@@ -216,68 +227,7 @@ resource "helm_release" "argo_cd" {
     yandex_kubernetes_node_group.k8s-diplom-ng
   ]
 }
-# data "yandex_alb_load_balancer" "tf-alb-data" {
-#   load_balancer_id = "enpemkmcn8ed083phd27k8s-264848606026dfa564f774bb8894e1d36faf0b13"
-# }
 
-# resource "yandex_iam_service_account_key" "sa-auth-key" {
-#   service_account_id = var.service_account_id
-#   description        = "external dns terra key"
-#   key_algorithm      = "RSA_2048"
-# }
-# resource "local_file" "auth_key_file" {
-#   content  = yandex_iam_service_account_key.sa-auth-key.private_key
-#   filename = "${path.module}/sa-auth-key.json"
-# }
-
-# resource "local_file" "auth_json_file" {
-#   content = "${jsonencode({
-#     id                 = yandex_iam_service_account_key.sa-auth-key.id
-#     service_account_id = yandex_iam_service_account_key.sa-auth-key.service_account_id
-#     created_at         = yandex_iam_service_account_key.sa-auth-key.created_at
-#     key_algorithm      = yandex_iam_service_account_key.sa-auth-key.key_algorithm
-#     public_key         = yandex_iam_service_account_key.sa-auth-key.public_key
-#     private_key        = yandex_iam_service_account_key.sa-auth-key.private_key
-#   })}\n"
-#   filename = "${path.module}/auth.json"
-# }
-# data "local_file" "auth_json_file" {
-#   filename = local_file.auth_json_file.filename
-# }
-# locals {
-#   auth_json = "${jsonencode({
-#     id                 = yandex_iam_service_account_key.sa-auth-key.id
-#     service_account_id = yandex_iam_service_account_key.sa-auth-key.service_account_id
-#     created_at         = yandex_iam_service_account_key.sa-auth-key.created_at
-#     key_algorithm      = yandex_iam_service_account_key.sa-auth-key.key_algorithm
-#     public_key         = yandex_iam_service_account_key.sa-auth-key.public_key
-#     private_key        = yandex_iam_service_account_key.sa-auth-key.private_key
-#   })}\n"
-# }
-
-# resource "helm_release" "externaldns" {
-#   name             = "externaldns"
-#   namespace        = "externaldns"
-#   create_namespace = true
-#   atomic           = true
-#   repository       = "oci://cr.yandex/yc-marketplace/yandex-cloud/externaldns/chart"
-#   chart            = "externaldns"
-#   version          = "0.5.1"
-#   depends_on = [
-#     yandex_kubernetes_cluster.k8s-zonal
-#   ]
-#   set {
-#     name  = "config.folder_id"
-#     value = var.folder_id
-#   }
-#   set_sensitive {
-#     name  = "config.auth.json"
-#     value = provisioner.local-exec
-#   }
-#   provisioner "local-exec" {
-#     command = "yc iam key create --service-account-name ${var.service_account_id} --format json --output key.json"
-#   }
-# }
 resource "helm_release" "prometheus-stack" {
   name             = "prometheus"
   namespace        = "monitoring-stack"
@@ -292,71 +242,31 @@ resource "helm_release" "prometheus-stack" {
   ]
 }
 
-# resource "kubernetes_manifest" "momostore_prometheus_servicemonitor" {
-#   manifest = {
-#     apiVersion = "monitoring.coreos.com/v1"
-#     kind       = "ServiceMonitor"
-#     metadata = {
-#       name      = "momostore-${helm_release.prometheus-stack.chart}-servicemonitor"
-#       namespace = helm_release.prometheus-stack.namespace
-#       labels = {
-#         release = helm_release.prometheus-stack.name
-#       }
-#     }
-#     spec = {
-#       endpoints = [
-#         {
-#           port     = "backend"
-#           path     = "/metrics"
-#           interval = "5s"
-#         }
-#       ]
-#       namespaceSelector = {
-#         any = true
-#       }
-#       selector = {
-#         matchLabels = {
-#           "app.kubernetes.io/instance" = "momo"
-#           "app.kubernetes.io/name"     = "backend"
-#         }
-#       }
-#     }
-#   }
-#   depends_on = [
-#     helm_release.prometheus-stack,
-#     yandex_kubernetes_cluster.k8s-zonal
-#   ]
-# }
+resource "helm_release" "cert-manager" {
+  name             = "cert-manager"
+  namespace        = "cert-manager"
+  create_namespace = true
+  atomic           = true
+  repository       = "https://charts.jetstack.io"
+  chart            = "cert-manager"
+  version          = "1.15.3"
+  depends_on = [
+    helm_release.nginx_ingress
+  ]
+}
 
-# resource "helm_release" "prometheus" {
-#   name             = "prometheus"
-#   namespace        = "monitoring"
-#   create_namespace = true
-#   atomic           = true
-#   repository       = "https://prometheus-community.github.io/helm-charts"
-#   chart            = "prometheus"
-#   version          = "25.25.0"
-# }
-# resource "helm_release" "grafana" {
-#   name             = "grafana"
-#   namespace        = "monitoring"
-#   create_namespace = true
-#   atomic           = true
-#   repository       = "https://grafana.github.io/helm-charts"
-#   chart            = "grafana"
-#   version          = "8.4.1"
-
-# }
 resource "yandex_iam_service_account_static_access_key" "sa-static-key" {
   service_account_id = var.service_account_id
   description        = "static access key for object storage, generated by terraform"
 }
+
 resource "yandex_storage_bucket" "diplom-momo-img" {
   access_key = yandex_iam_service_account_static_access_key.sa-static-key.access_key
   secret_key = yandex_iam_service_account_static_access_key.sa-static-key.secret_key
   bucket     = "diplom-momo-img"
   acl        = "public-read"
 }
+
 resource "yandex_storage_object" "momo-img" {
   access_key  = yandex_iam_service_account_static_access_key.sa-static-key.access_key
   secret_key  = yandex_iam_service_account_static_access_key.sa-static-key.secret_key

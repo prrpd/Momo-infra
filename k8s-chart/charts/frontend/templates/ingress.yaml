@@ -15,6 +15,7 @@ spec:
   tls:
     - hosts:
         - "{{ .Values.ingress.fqdn }}"
+      secretName: tls-2048-bilgicloud
   rules:
     - host: "{{ .Values.ingress.fqdn }}"
       http:
