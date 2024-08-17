@@ -253,6 +253,10 @@ resource "helm_release" "cert-manager" {
   depends_on = [
     helm_release.nginx_ingress
   ]
+  set {
+    name  = "installCRDs"
+    value = true
+  }
 }
 
 resource "yandex_iam_service_account_static_access_key" "sa-static-key" {
