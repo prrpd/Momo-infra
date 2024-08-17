@@ -57,5 +57,6 @@ autoscaling:
 clusterissuer:
   name: http01-clusterissuer
   acmeserver: https://acme-staging-v02.api.letsencrypt.org/directory
+  # acmeserver: https://acme-v02.api.letsencrypt.org/directory
   email: someem@dfdf.com
   secretName: tls-2048-bilgicloud
