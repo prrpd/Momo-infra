@@ -10,11 +10,15 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: {{ .Release.Name }}-{{ .Chart.Name }}-ing
+  annotations:
+   kubernetes.io/ingress.class: {{ .Values.ingress.className }}
+   cert-manager.io/cluster-issuer: {{.Values.clusterissuer.name}}
 spec:
   ingressClassName: "{{ .Values.ingress.className }}"
   tls:
     - hosts:
         - "{{ .Values.ingress.fqdn }}"
+      secretName: {{.Values.clusterissuer.secretName}}
   rules:
     - host: "{{ .Values.ingress.fqdn }}"
       http:

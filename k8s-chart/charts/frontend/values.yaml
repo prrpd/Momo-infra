@@ -48,8 +48,15 @@ ingress:
   fqdn: ""
 
 autoscaling:
-  enabled: false
+  enabled: true
   minReplicas: 1
-  maxReplicas: 100
+  maxReplicas: 2
   targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+clusterissuer:
+  name: http01-clusterissuer
+  # acmeserver: https://acme-staging-v02.api.letsencrypt.org/directory
+  acmeserver: https://acme-v02.api.letsencrypt.org/directory
+  email: someem@dfdf.com
+  secretName: tls-lecert-diplom
